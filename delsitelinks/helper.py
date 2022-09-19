@@ -1,5 +1,6 @@
 import pandas as pd
 
+from .config import PAGE_IS_MISSING, LOCAL_QID_IS_DIFFERENT, LOCAL_QID_IS_MISSING
 from .database import Replica
 from .types import WikiClient
 
@@ -30,11 +31,11 @@ def query_wiki_clients(dump_to_file:bool=False, lazy_namespaces:bool=False) -> l
 
 
 def get_missing_filter(df:pd.DataFrame, key:str) -> pd.Series:
-    if key == 'page_is_missing':
+    if key == PAGE_IS_MISSING:
         return df['ns_numerical'].isna()
-    elif key == 'qid_is_different':
+    elif key == LOCAL_QID_IS_DIFFERENT:
         return (df['qid'].notna() & (df['qid']!=df['qid_sitelink']))
-    elif key == 'page_needs_nulledit':
+    elif key == LOCAL_QID_IS_MISSING:
         return (df['qid'].isna() & df['ns_numerical'].notna())
 
     raise RuntimeWarning(f'No filter found for key {key}')
@@ -42,7 +43,7 @@ def get_missing_filter(df:pd.DataFrame, key:str) -> pd.Series:
 
 def write_to_stat_file(dbname:str, params:dict) -> None:
     with open('./log/stat.tsv', mode='a', encoding='utf8') as file_handle:
-        file_handle.write(f'{dbname}\t{params.get("page_is_missing", -1):d}\t{params.get("qid_is_different", -1):d}\t{params.get("page_needs_nulledit", -1):d}\n')
+        file_handle.write(f'{dbname}\t{params.get(PAGE_IS_MISSING, -1):d}\t{params.get(LOCAL_QID_IS_DIFFERENT, -1):d}\t{params.get(LOCAL_QID_IS_MISSING, -1):d}\n')
 
 
 def write_to_wikiclients_file(wiki_clients:list[WikiClient], dump_to_file:bool=False) -> None:

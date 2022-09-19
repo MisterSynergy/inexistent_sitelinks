@@ -5,7 +5,7 @@ import pandas as pd
 import pyarrow as pa
 from pyarrow.ipc import IpcWriteOptions, new_file
 
-from .config import PAGES_FILENAME, SITELINKS_FILENAME
+from .config import PAGES_FILENAME, SITELINKS_FILENAME, IX_URL, PAGE_IS_MISSING, LOCAL_QID_IS_DIFFERENT, LOCAL_QID_IS_MISSING
 from .database import Replica
 from .types import WikiClient
 
@@ -103,11 +103,10 @@ def query_sitelinks_to_file(wiki_client:WikiClient) -> tuple[str, int]:
     return query_sitelinks_to_feather(wiki_client, query)
 
 
-def load_file_from_msbits(folder:str, filename:str) -> pd.DataFrame:
-    if folder not in [ 'page_is_missing', 'local_qid_is_missing', 'local_qid_is_different' ]:
-        raise RuntimeWarning(f'load_file_from_msbits: target folder {folder} does not exist')
+def load_file_from_ix(folder:str, filename:str) -> pd.DataFrame:
+    if folder not in [ PAGE_IS_MISSING, LOCAL_QID_IS_DIFFERENT, LOCAL_QID_IS_MISSING ]:
+        raise RuntimeWarning(f'load_file_from_ix: target folder {folder} does not exist')
 
-    url = fr'https://msbits.toolforge.org/inexistent_sitelinks_ix/{folder}/{filename}'
-    df = pd.read_feather(url)
+    df = pd.read_feather(IX_URL.format(folder=folder, filename=filename))
 
     return df

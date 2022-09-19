@@ -3,8 +3,8 @@ from datetime import datetime
 from typing import Any, Optional
 import pandas as pd
 
-from .config import QIDS_TO_IGNORE
-from .query import load_file_from_msbits
+from .config import QIDS_TO_IGNORE, PAGE_IS_MISSING, LOCAL_QID_IS_DIFFERENT, LOCAL_QID_IS_MISSING
+from .query import load_file_from_ix
 from .datahandler import load_pages, load_sitelinks
 from .helper import get_missing_filter, write_to_stat_file
 from .types import WikiClient, User, Page, Sitelink, LogEvent
@@ -14,11 +14,11 @@ from .bot import touch_page, remove_sitelink_from_item, canonicalize_sitelink, c
 def process_project(wiki_client:WikiClient, job_remove_sitelinks:bool=False, job_qid_different:bool=False, job_qid_missing:bool=False, job_stat_file:bool=True) -> None:
     if True:  # this requires offline computations for all projects
         if job_stat_file is True or job_remove_sitelinks is True:
-            page_is_missing = load_file_from_msbits('page_is_missing', f'{wiki_client.dbname}.feather')
+            page_is_missing = load_file_from_ix(PAGE_IS_MISSING, f'{wiki_client.dbname}.feather')
         if job_stat_file is True or job_qid_different is True:
-            local_qid_is_different = load_file_from_msbits('local_qid_is_different', f'{wiki_client.dbname}.feather')
+            local_qid_is_different = load_file_from_ix(LOCAL_QID_IS_DIFFERENT, f'{wiki_client.dbname}.feather')
         if job_stat_file is True or job_qid_missing is True:
-            local_qid_is_missing = load_file_from_msbits('local_qid_is_missing', f'{wiki_client.dbname}.feather')
+            local_qid_is_missing = load_file_from_ix(LOCAL_QID_IS_MISSING, f'{wiki_client.dbname}.feather')
     else:
         pages = load_pages(wiki_client.dbname, wiki_client.get_namespaces())
         sitelinks = load_sitelinks(wiki_client.dbname)
@@ -32,13 +32,13 @@ def process_project(wiki_client:WikiClient, job_remove_sitelinks:bool=False, job
         missing.drop(columns=['full_page_title'], inplace=True)
 
         if job_stat_file is True or job_remove_sitelinks is True:
-            filt_page_is_missing = get_missing_filter(missing, 'page_is_missing')
+            filt_page_is_missing = get_missing_filter(missing, PAGE_IS_MISSING)
             page_is_missing = missing.loc[filt_page_is_missing]
         if job_stat_file is True or job_qid_different is True:
-            filt_local_qid_is_different = get_missing_filter(missing, 'qid_is_different')
+            filt_local_qid_is_different = get_missing_filter(missing, LOCAL_QID_IS_DIFFERENT)
             local_qid_is_different = missing.loc[filt_local_qid_is_different]
         if job_stat_file is True or job_qid_missing is True:
-            filt_local_qid_is_missing = get_missing_filter(missing, 'page_needs_nulledit')
+            filt_local_qid_is_missing = get_missing_filter(missing, LOCAL_QID_IS_MISSING)
             local_qid_is_missing = missing.loc[filt_local_qid_is_missing]
 
     if job_remove_sitelinks is True:
@@ -54,9 +54,9 @@ def process_project(wiki_client:WikiClient, job_remove_sitelinks:bool=False, job
         write_to_stat_file(
             wiki_client.dbname,
             {
-                'page_is_missing' : page_is_missing.shape[0],
-                'qid_is_different' : local_qid_is_different.shape[0],
-                'page_needs_nulledit' : local_qid_is_missing.shape[0]
+                PAGE_IS_MISSING : page_is_missing.shape[0],
+                LOCAL_QID_IS_DIFFERENT : local_qid_is_different.shape[0],
+                LOCAL_QID_IS_MISSING : local_qid_is_missing.shape[0]
             }
         )
 
@@ -252,7 +252,7 @@ def remove_sitelinks(df:pd.DataFrame, wiki_client:WikiClient) -> None:
 
 
 def touch_different_local_qids(df:pd.DataFrame, wiki_client:WikiClient) -> None:
-    print(f'Cases of different qids in {wiki_client.dbname}: {df.shape[0]}')
+    print(f'Page needs nulledit in {wiki_client.dbname} because the local qid in the page_props table is different: {df.shape[0]}')
     for i, elem in enumerate(df.itertuples(), start=1):
         try:
             touch_page(
