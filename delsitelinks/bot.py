@@ -2,9 +2,12 @@ from typing import Any, Optional
 from time import sleep
 
 import pywikibot as pwb
-from pywikibot.exceptions import NoUsernameError, InvalidTitleError, TitleblacklistError, UnsupportedPageError, UnknownFamilyError, UnknownSiteError, CascadeLockedPageError, LockedPageError, NoPageError, APIError, OtherPageSaveError, SiteDefinitionError, NoWikibaseEntityError
+from pywikibot.exceptions import NoUsernameError, InvalidTitleError, TitleblacklistError, \
+    UnsupportedPageError, UnknownFamilyError, UnknownSiteError, CascadeLockedPageError, \
+    LockedPageError, NoPageError, APIError, OtherPageSaveError, SiteDefinitionError, \
+    NoWikibaseEntityError
 
-from .config import REPO, TOUCH_SLEEP
+from .config import REPO, TOUCH_SLEEP, EDITSUMMARY_HASHTAG
 from .database import LoggingDB
 
 
@@ -74,7 +77,7 @@ def _make_edit_summary(dbname:str, page_title:str, edit_summary_log:Optional[str
     if edit_summary_log is None:
         edit_summary_log = ''    
 
-    return f'remove sitelink "{dbname}:{page_title}" (page does not exist on client wiki{edit_summary_log}) #{dbname} #msynbotTask8'
+    return f'remove sitelink "{dbname}:{page_title}" (page does not exist on client wiki{edit_summary_log}) #{dbname}{EDITSUMMARY_HASHTAG}'
 
 
 def remove_sitelink_from_item(qid:str, dbname:str, page_title:str, callback_payload:dict[str, Any], edit_summary_log:Optional[str]=None) -> None:
@@ -115,7 +118,7 @@ def handle_uncanonicalizable_sitelink(qid:str, dbname:str, callback_payload:dict
 
 
 def canonicalize_sitelink(qid:str, dbname:str, callback_payload:dict[str, Any]) -> None:
-    edit_summary = f'normalize sitelink for {dbname} by using the canonical namespace prefix #{dbname} #msynbotTask8'
+    edit_summary = f'normalize sitelink for {dbname} by using the canonical namespace prefix #{dbname}{EDITSUMMARY_HASHTAG}'
 
     q_item = pwb.ItemPage(REPO, qid)
     q_item.get()

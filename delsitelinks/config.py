@@ -5,9 +5,10 @@ DB_PATH = './logging.db'
 
 SITE = pwb.Site('wikidata', 'wikidata')
 REPO = SITE.data_repository()
-RELOAD = False
-TOUCH_SLEEP = 2 # seconds or None
+EDITSUMMARY_HASHTAG = ' #msynbotTask8'  # including leading space; may be an empty string as well
+TOUCH_SLEEP = 2  # int or None; time in seconds
 
+RELOAD = False
 QUERY_CHUNK_SIZE = 1000000
 PAGES_FILENAME = './pages/{dbname}.feather'
 SITELINKS_FILENAME = './sitelinks/{dbname}.feather'
