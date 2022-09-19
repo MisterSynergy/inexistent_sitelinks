@@ -1,4 +1,4 @@
-from os.path import expanduser, exists
+from os.path import expanduser, exists, isfile
 from typing import Any, Optional, Iterator
 import sqlite3
 
@@ -8,12 +8,25 @@ from mysql.connector.errors import ProgrammingError
 from .config import QUERY_CHUNK_SIZE, DB_PATH
 
 
+def find_option_file() -> str:
+    paths = [
+        f'{expanduser("~")}/replica.my.cnf',  # Toolforge
+        f'{expanduser("~")}/.my.cnf',  # PAWS
+    ]
+
+    for path in paths:
+        if isfile(path):
+            return path
+
+    raise RuntimeWarning('No "option file" found')
+
+
 class Replica:
     def __init__(self, dbname:str) -> None:
         params = {
             'host' : f'{dbname}.analytics.db.svc.wikimedia.cloud',
             'database' : f'{dbname}_p',
-            'option_files' : f'{expanduser("~")}/.my.cnf' # user credentials from PAWS home folder
+            'option_files' : find_option_file()
         }
         self.replica = MySQLConnection(**params)
         self.cursor = self.replica.cursor()
