@@ -5,6 +5,7 @@ from json import JSONDecodeError
 import phpserialize
 import requests
 
+from .config import LARGE_WIKIS_LOGEVENTS
 from .database import Replica
 
 
@@ -257,12 +258,7 @@ class Page:
             self.wiki_client.get_namespaces()
         )
         
-        LARGE_WIKIS = {  # These do not really response quickly enough when the logging table is queried # TODO
-            'enwiki' : 'en.wikipedia.org',
-            'srwikinews' : 'sr.wikinews.org'
-        }
-        
-        if self.wiki_client.dbname not in LARGE_WIKIS.keys():
+        if self.wiki_client.dbname not in LARGE_WIKIS_LOGEVENTS.keys():  # TODO: figure out whether this can be done one way or the other for all projects
             query = f"""SELECT
                 log_id,
                 log_timestamp,
@@ -280,7 +276,7 @@ class Page:
             result = Replica.query_mediawiki(self.wiki_client.dbname, query)
         else:
             api_response = WikiClient.api_request(
-                LARGE_WIKIS.get(self.wiki_client.dbname, 'meta.wikimedia.org'),
+                LARGE_WIKIS_LOGEVENTS.get(self.wiki_client.dbname, 'meta.wikimedia.org'),
                 {
                     'action': 'query',
                     'format': 'json',
