@@ -3,7 +3,8 @@ from typing import Any
 from csv import QUOTE_NONE
 import pandas as pd
 
-from .config import RELOAD, PAGES_FILENAME, SITELINKS_FILENAME, PAGE_IS_MISSING_FILENAME, LOCAL_QID_IS_DIFFERENT_FILENAME, LOCAL_QID_IS_MISSING_FILENAME
+from .config import RELOAD, PAGES_FILENAME, SITELINKS_FILENAME, \
+    PAGE_IS_MISSING_FILENAME, LOCAL_QID_IS_DIFFERENT_FILENAME, LOCAL_QID_IS_MISSING_FILENAME
 from .query import query_pages_to_file, query_sitelinks_to_file
 from .types import WikiClient
 
