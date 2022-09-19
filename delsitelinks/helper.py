@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .config import PAGE_IS_MISSING, LOCAL_QID_IS_DIFFERENT, LOCAL_QID_IS_MISSING
+from .config import PAGE_IS_MISSING, LOCAL_QID_IS_DIFFERENT, LOCAL_QID_IS_MISSING, LOG_STATFILE, LOG_WIKICLIENTS
 from .database import Replica
 from .types import WikiClient
 
@@ -42,7 +42,7 @@ def get_missing_filter(df:pd.DataFrame, key:str) -> pd.Series:
 
 
 def write_to_stat_file(dbname:str, params:dict) -> None:
-    with open('./log/stat.tsv', mode='a', encoding='utf8') as file_handle:
+    with open(LOG_STATFILE, mode='a', encoding='utf8') as file_handle:
         file_handle.write(f'{dbname}\t{params.get(PAGE_IS_MISSING, -1):d}\t{params.get(LOCAL_QID_IS_DIFFERENT, -1):d}\t{params.get(LOCAL_QID_IS_MISSING, -1):d}\n')
 
 
@@ -50,6 +50,6 @@ def write_to_wikiclients_file(wiki_clients:list[WikiClient], dump_to_file:bool=F
     if dump_to_file is not True:
         return
 
-    with open('./log/wiki_clients.txt', mode='w', encoding='utf8') as file_handle:
+    with open(LOG_WIKICLIENTS, mode='w', encoding='utf8') as file_handle:
         for wiki_client in wiki_clients:
             file_handle.write(f'{wiki_client.dbname}\t{wiki_client.hostname}\n')

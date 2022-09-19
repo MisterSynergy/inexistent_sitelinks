@@ -19,6 +19,9 @@ PAGE_IS_MISSING_FILENAME = f'./{PAGE_IS_MISSING}/{{dbname}}.feather'
 LOCAL_QID_IS_DIFFERENT_FILENAME = f'./{LOCAL_QID_IS_DIFFERENT}/{{dbname}}.feather'
 LOCAL_QID_IS_MISSING_FILENAME = f'./{LOCAL_QID_IS_MISSING}/{{dbname}}.feather'
 
+LOG_STATFILE = './log/stat.tsv'
+LOG_WIKICLIENTS = './log/wiki_clients.txt'
+
 IX_URL = r'https://msbits.toolforge.org/inexistent_sitelinks_ix/{folder}/{filename}'
 
 
