@@ -1,0 +1,12 @@
+pages/*.feather
+sitelinks/*.feather
+page_is_missing/*.feather
+local_qid_is_different/*.feather
+local_qid_is_missing/*.feather
+
+log_local/*.tsv
+log/*.txt
+log/*.tsv
+profiler/
+meta/
+logging.db
