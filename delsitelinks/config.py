@@ -44,7 +44,7 @@ NEEDS_FIX_WIKIS:list[str] = [
 ]
 
 # if True, then update existing dumps from database; otherwise just load from dumped file
-RELOAD:bool = False
+RELOAD:bool = True
 
 # when using touch tasks, select which ones to activate here
 TOUCH_QID_DIFFERENT:bool = True
@@ -52,8 +52,8 @@ TOUCH_QID_MISSING:bool = False
 
 # project selection: which projects to work on if not all (both None); if a project is listed in both lists, the blacklist wins
 # only work on these projects (dbname); list or None
-WORK_WHITELIST:Optional[list[str]] = []
+WORK_WHITELIST:Optional[list[str]] = None
 
 # do not work on these projects (dbname); list or None
-WORK_BLACKLIST:Optional[list[str]] = []
+WORK_BLACKLIST:Optional[list[str]] = None
 
