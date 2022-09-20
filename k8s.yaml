@@ -8,7 +8,7 @@ metadata:
     toolforge: tool
 spec:
   schedule: "42 10 * * 2"
-  successfulJobsHistoryLimit: 0
+# successfulJobsHistoryLimit: 0
   jobTemplate:
     spec:
       template:
@@ -19,6 +19,13 @@ spec:
           containers:
           - name: delsitelinks
             image: docker-registry.tools.wmflabs.org/toolforge-python39-sssd-base:latest
+            resources:
+              requests:
+                memory: "6Gi"
+                cpu: "1000m"
+              limits:
+                memory: "8Gi"
+                cpu: "1000m"
             env:
             - name: PYTHONPATH
               value: /data/project/shared/pywikibot/stable
