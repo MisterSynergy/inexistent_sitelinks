@@ -57,3 +57,5 @@ WORK_WHITELIST:Optional[list[str]] = None
 # do not work on these projects (dbname); list or None
 WORK_BLACKLIST:Optional[list[str]] = None
 
+MIN_PROJECT:Optional[str] = None
+MAX_PROJECT:Optional[str] = None

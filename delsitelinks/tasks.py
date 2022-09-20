@@ -2,7 +2,7 @@ from time import strftime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from mysql.connector import DatabaseError
 
-from .config import NEEDS_FIX_WIKIS, WORK_WHITELIST, WORK_BLACKLIST, TOUCH_QID_DIFFERENT, TOUCH_QID_MISSING
+from .config import NEEDS_FIX_WIKIS, WORK_WHITELIST, WORK_BLACKLIST, MIN_PROJECT, MAX_PROJECT, TOUCH_QID_DIFFERENT, TOUCH_QID_MISSING
 from .helper import query_wiki_clients
 from .processing import process_project
 from .query import query_pages_to_file, query_sitelinks_to_file
@@ -19,6 +19,12 @@ def main_reload_dumps() -> None:
             continue
 
         if WORK_WHITELIST is not None and wiki_client.dbname not in WORK_WHITELIST:
+            continue
+
+        if MIN_PROJECT is not None and wiki_client.dbname < MIN_PROJECT:
+            continue
+
+        if MAX_PROJECT is not None and wiki_client.dbname > MAX_PROJECT:
             continue
 
         print(f'\n== {wiki_client.dbname} ({i}/{len(wiki_clients)} at {strftime("%Y-%m-%d, %H:%M:%S")}) ==')
@@ -52,6 +58,12 @@ def main_tidy_sitelinks() -> None:
             continue
 
         if WORK_WHITELIST is not None and wiki_client.dbname not in WORK_WHITELIST:
+            continue
+
+        if MIN_PROJECT is not None and wiki_client.dbname < MIN_PROJECT:
+            continue
+
+        if MAX_PROJECT is not None and wiki_client.dbname > MAX_PROJECT:
             continue
 
         print(f'\n== {wiki_client.dbname} ({i}/{len(wiki_clients)}) at {strftime("%Y-%m-%d, %H:%M:%S")}) ==')
