@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any, Optional
 import pandas as pd
 
-from .config import QIDS_TO_IGNORE, PAGE_IS_MISSING, LOCAL_QID_IS_DIFFERENT, LOCAL_QID_IS_MISSING
+from .config import QIDS_TO_IGNORE, PAGE_IS_MISSING, LOCAL_QID_IS_DIFFERENT, LOCAL_QID_IS_MISSING, COMPUTE_OFFLINE
 from .query import load_file_from_ix
 from .datahandler import load_pages, load_sitelinks
 from .helper import get_missing_filter, write_to_stat_file
@@ -12,7 +12,7 @@ from .bot import touch_page, remove_sitelink_from_item, canonicalize_sitelink, c
 
 
 def process_project(wiki_client:WikiClient, job_remove_sitelinks:bool=False, job_qid_different:bool=False, job_qid_missing:bool=False, job_stat_file:bool=True) -> None:
-    if True:  # this requires offline computations for all projects
+    if COMPUTE_OFFLINE is True:  # this requires offline computations for all projects
         if job_stat_file is True or job_remove_sitelinks is True:
             page_is_missing = load_file_from_ix(PAGE_IS_MISSING, f'{wiki_client.dbname}.feather')
         if job_stat_file is True or job_qid_different is True:
@@ -20,8 +20,8 @@ def process_project(wiki_client:WikiClient, job_remove_sitelinks:bool=False, job
         if job_stat_file is True or job_qid_missing is True:
             local_qid_is_missing = load_file_from_ix(LOCAL_QID_IS_MISSING, f'{wiki_client.dbname}.feather')
     else:
-        pages = load_pages(wiki_client.dbname, wiki_client.get_namespaces())
-        sitelinks = load_sitelinks(wiki_client.dbname)
+        pages = load_pages(wiki_client)
+        sitelinks = load_sitelinks(wiki_client)
 
         missing = sitelinks.merge(
             right=pages,

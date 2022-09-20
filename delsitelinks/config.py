@@ -43,6 +43,10 @@ NEEDS_FIX_WIKIS:list[str] = [
 
 ]
 
+# if True, you need to use local.py locally in order to process the selected projects; useful if the project does
+# not compute on Toolforge/PAWS due to memory limitations
+COMPUTE_OFFLINE:bool = True
+
 # if True, then update existing dumps from database; otherwise just load from dumped file
 RELOAD:bool = True
 
