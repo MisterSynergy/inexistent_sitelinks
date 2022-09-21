@@ -1,17 +1,33 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from csv import QUOTE_NONE
 from glob import glob
-from json import JSONDecodeError
 from time import strftime
-from typing import Dict
-from numpy import nan
+from typing import Optional
+
 import pandas as pd
 import pyarrow as pa
 import requests
 from memory_profiler import profile
 
 
-PRINT = False
+PROJECT_SELECT_WHITELIST:Optional[list[str]] = None
+PROJECT_SELECT_BLACKLIST:Optional[list[str]] = None
+PROJECT_SELECT_MIN:Optional[str] = None
+PROJECT_SELECT_MAX:Optional[str] = None
+
+PRINT:bool = False
+MAKE_STAT_OUTPUT:bool = False
+
+QIDS_TO_IGNORE:list[str] = [
+    'Q105429923',  # Special:RecentChanges
+    'Q112333026',  # Special:ProtectedTitles
+]
+
+PAWS_BASE_URL = r'https://public.paws.wmcloud.org/User:MisterSynergy/misc/2021%2012%20deleted%20sitelinks'
+FOLDER_PAGES = 'pages'
+FOLDER_SITELINKS = 'sitelinks'
+FOLDER_PAGE_IS_MISSING = 'page_is_missing'
+FOLDER_LOCAL_QID_IS_DIFFERENT = 'local_qid_is_different'
+FOLDER_LOCAL_QID_IS_MISSING = 'local_qid_is_missing'
 
 
 def download_file_from_paws(url:str, folder:str, dbname:str) -> tuple:
@@ -24,8 +40,7 @@ def download_file_from_paws(url:str, folder:str, dbname:str) -> tuple:
 
 
 def download_files_from_paws(dbname:str) -> None:
-    base_url = r'https://public.paws.wmcloud.org/User:MisterSynergy/misc/2021%2012%20deleted%20sitelinks/{folder}/{dbname}.feather'
-    
+    base_url = f'{PAWS_BASE_URL}/{{folder}}/{{dbname}}.feather'
     with ThreadPoolExecutor() as executor:
         results = [ executor.submit(download_file_from_paws, base_url.format(folder=folder, dbname=dbname), folder, dbname) for folder in [ 'sitelinks', 'pages' ] ]
         for future in as_completed(results):
@@ -36,7 +51,7 @@ def download_files_from_paws(dbname:str) -> None:
 def load_pages(project_data:dict) -> pd.DataFrame:
     print(f'Start reading pages file for {project_data.get("dbname", "meta")} to dataframe at {strftime("%H:%M:%S")}')
     df = pd.read_feather(
-        f'./pages/{project_data.get("dbname", "meta")}.feather'
+        f'./{FOLDER_PAGES}/{project_data.get("dbname", "meta")}.feather'
     )
     return df
 
@@ -44,7 +59,7 @@ def load_pages(project_data:dict) -> pd.DataFrame:
 def load_sitelinks(project_data:dict) -> pd.DataFrame:
     print(f'Start reading sitelinks file for {project_data.get("dbname", "meta")} to dataframe at {strftime("%H:%M:%S")}')
     df = pd.read_feather(
-        f'./sitelinks/{project_data.get("dbname", "meta")}.feather'
+        f'./{FOLDER_SITELINKS}/{project_data.get("dbname", "meta")}.feather'
     )
     return df
 
@@ -106,15 +121,15 @@ def process_project(project_data:dict) -> None:
     print(f'Total number of elements in missing: {missing.shape[0]}\n')
 
     page_is_missing_filt = missing['ns_numerical'].isna()
-    missing.loc[page_is_missing_filt].reset_index().to_feather(f'./page_is_missing/{project_data.get("dbname", "meta")}.feather')
+    missing.loc[page_is_missing_filt].reset_index().to_feather(f'./{FOLDER_PAGE_IS_MISSING}/{project_data.get("dbname", "meta")}.feather')
     print_df_info(missing.loc[page_is_missing_filt], 'inexistent pages')
 
     local_qid_is_different_filt = missing['qid'].notna() & (missing['qid']!=missing['qid_sitelink'])
-    missing.loc[local_qid_is_different_filt].reset_index().to_feather(f'./local_qid_is_different/{project_data.get("dbname", "meta")}.feather')
+    missing.loc[local_qid_is_different_filt].reset_index().to_feather(f'./{FOLDER_LOCAL_QID_IS_DIFFERENT}/{project_data.get("dbname", "meta")}.feather')
     print_df_info(missing.loc[local_qid_is_different_filt], 'local QID is different')
 
     local_qid_is_missing_filt = (missing['qid'].isna() & missing['ns_numerical'].notna())
-    missing.loc[local_qid_is_missing_filt].reset_index().to_feather(f'./local_qid_is_missing/{project_data.get("dbname", "meta")}.feather')
+    missing.loc[local_qid_is_missing_filt].reset_index().to_feather(f'./{FOLDER_LOCAL_QID_IS_MISSING}/{project_data.get("dbname", "meta")}.feather')
     print_df_info(missing.loc[local_qid_is_missing_filt], 'local QID is missing')
 
     write_stat_output(
@@ -129,8 +144,7 @@ def process_project(project_data:dict) -> None:
 
 def load_project_datas() -> list[dict[str, str]]:
     project_datas = []
-    url = r'https://public.paws.wmcloud.org/User:MisterSynergy/misc/2021%2012%20deleted%20sitelinks/log/wiki_clients.txt'
-    response = requests.get(url)
+    response = requests.get(f'{PAWS_BASE_URL}/log/wiki_clients.txt')
     for line in response.text.split('\n'):
         if line == '':
             break
@@ -140,7 +154,7 @@ def load_project_datas() -> list[dict[str, str]]:
     return project_datas
 
 
-def merge_all(directory:str='page_is_missing') -> pd.DataFrame:
+def merge_all(directory:str=FOLDER_PAGE_IS_MISSING) -> pd.DataFrame:
     filenames = glob(f'./{directory}/*.feather')
 
     df_list = []
@@ -158,25 +172,27 @@ def main() -> None:
     project_datas = load_project_datas()
 
     for i, project_data in enumerate(project_datas, start=1):
-        if project_data.get('dbname') != 'wuuwiki':
+        if PROJECT_SELECT_WHITELIST is not None and project_data.get('dbname') not in PROJECT_SELECT_WHITELIST:
+            continue
+        if PROJECT_SELECT_BLACKLIST is not None and project_data.get('dbname') in PROJECT_SELECT_BLACKLIST:
+            continue
+        if PROJECT_SELECT_MIN is not None and project_data.get('dbname', '') < PROJECT_SELECT_MIN:
+            continue
+        if PROJECT_SELECT_MAX is not None and project_data.get('dbname', '') > PROJECT_SELECT_MAX:
             continue
 
         print(f'\n== project {i}/{len(project_datas)} ==')
         download_files_from_paws(project_data.get('dbname', 'meta'))
         process_project(project_data)
-        #make_stat_output(project_data)
+        if MAKE_STAT_OUTPUT is True:
+            make_stat_output(project_data)
 
 
 def main_concat() -> None:
-    qids_to_ignore = [
-        'Q105429923',  # Special:RecentChanges
-        'Q112333026',  # Special:ProtectedTitles
-    ]
-    
-    for directory in [ 'page_is_missing', 'local_qid_is_missing', 'local_qid_is_different' ]:
+    for directory in [ FOLDER_PAGE_IS_MISSING, FOLDER_LOCAL_QID_IS_DIFFERENT, FOLDER_LOCAL_QID_IS_MISSING ]:
         df = merge_all(directory=directory)
         
-        filt = ~df['qid_sitelink'].isin(qids_to_ignore)
+        filt = ~df['qid_sitelink'].isin(QIDS_TO_IGNORE)
         
         print(f'== Folder "{directory}" ==')
         print(f'Number of elements: {df.loc[filt].shape[0]}\nSample entries:\n')
@@ -193,7 +209,6 @@ def main_concat() -> None:
 
 
 def count_elems(elem_name:str) -> None:
-
     filenames = glob(f'./{elem_name}/*.feather')
 
     cnt = {}
@@ -210,11 +225,11 @@ def count_elems(elem_name:str) -> None:
 
 
 def main_count_sitelinks() -> None:
-    count_elems('sitelinks')
+    count_elems(FOLDER_SITELINKS)
 
 
 def main_count_pages() -> None:
-    count_elems('pages')
+    count_elems(FOLDER_PAGES)
 
 
 def main_dbnames_comparison() -> None:
@@ -253,8 +268,8 @@ def main_dbnames_comparison() -> None:
 
 
 if __name__=='__main__':
-#    main()
-    main_concat()
+    main()
+#    main_concat()
 #    main_count_sitelinks()
 #    main_count_pages()
 #    main_dbnames_comparison()
