@@ -21,11 +21,9 @@ spec:
             image: docker-registry.tools.wmflabs.org/toolforge-python39-sssd-base:latest
             resources:
               requests:
-                memory: "6Gi"
-                cpu: "1000m"
+                memory: "5Gi"
               limits:
-                memory: "8Gi"
-                cpu: "1000m"
+                memory: "7Gi"
             env:
             - name: PYTHONPATH
               value: /data/project/shared/pywikibot/stable
@@ -33,5 +31,5 @@ spec:
               value: /data/project/msynbot
             workingDir: /data/project/msynbot/pywikibot_tasks/inexistent_sitelinks
             command: [ venv/bin/python3 ]
-            args: [ main.py ]
-          restartPolicy: OnFailure
+            args: [ main_tidy_sitelinks.py ]
+          restartPolicy: Never
