@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import logging
 from typing import Any, Optional, Type, TypeVar
 from json import JSONDecodeError
 
@@ -7,6 +8,10 @@ import requests
 
 from .config import LARGE_WIKIS_LOGEVENTS
 from .database import Replica
+
+
+LOG = logging.getLogger(__name__)
+U = TypeVar('U', bound='User')
 
 
 @dataclass
@@ -22,9 +27,6 @@ class BlockEvent:
     log_id:int
     log_timestamp:int
     log_params:dict
-
-
-U = TypeVar('U', bound='User')
 
 
 @dataclass
@@ -45,6 +47,7 @@ class User:
 
         user_name_tidied = self.user_name.replace(" ", "_").replace("'", "''")
 
+        params = { 'username' : user_name_tidied }
         query = f"""SELECT
             log_id,
             log_timestamp,
@@ -55,11 +58,17 @@ class User:
             log_type='block'
             AND log_action='block'
             AND log_namespace=2
-            AND log_title='{user_name_tidied}'"""
-        result = Replica.query_mediawiki('wikidatawiki', query)
+            AND log_title=%(username)s"""
+        result = Replica.query_mediawiki('wikidatawiki', query, params=params)
 
         for row in result:
-            self.user_blocklog.append(BlockEvent(row[0], row[1].decode('utf8'), row[2].decode('utf8')))
+            self.user_blocklog.append(
+                BlockEvent(
+                    row['log_id'],
+                    row['log_timestamp'].decode('utf8'),
+                    row['log_params'].decode('utf8')
+                )
+            )
 
     def _str_blocklog(self) -> str:
         msg = f'User had {len(self.user_blocklog)} blocks'
@@ -75,9 +84,9 @@ class User:
         if self.user_id is None:
             return 'User does not exist at Wikidata'
         
-        return f'User "{self.user_name}" has account at Wikidata since {self.user_registration} and' \
-               f' made {self.user_editcount} edits; local user id {self.user_id}; block history:' \
-               f' {self._str_blocklog()}'
+        return f'User "{self.user_name}" has account at Wikidata since {self.user_registration}' \
+               f' and made {self.user_editcount} edits; local user id {self.user_id}; block' \
+               f' history: {self._str_blocklog()}'
 
     def get_bot_payload_dict(self) -> dict[str, Any]:
         if self.user_id is None:
@@ -103,6 +112,7 @@ class User:
     def user_by_name(cls: Type[U], user_name:str) -> U:
         user_name_tidied = user_name.replace("'", "''")
         
+        params = { 'username' : user_name_tidied }
         query_exists = f"""SELECT
             user_id,
             user_name,
@@ -111,17 +121,17 @@ class User:
         FROM
             user
         WHERE
-            user_name='{user_name_tidied}'"""
-        result_exists = Replica.query_mediawiki('wikidatawiki', query_exists)
+            user_name=%(username)s"""
+        result_exists = Replica.query_mediawiki('wikidatawiki', query_exists, params=params)
 
         if len(result_exists)==0:
             return cls()
 
         return cls(
-            user_id=result_exists[0][0],
-            user_name=result_exists[0][1].decode('utf8'),
-            user_registration=int(result_exists[0][2].decode('utf8')),
-            user_editcount=result_exists[0][3],
+            user_id=result_exists[0]['user_id'],
+            user_name=result_exists[0]['user_name'].decode('utf8'),
+            user_registration=int(result_exists[0]['user_registration'].decode('utf8')),
+            user_editcount=result_exists[0]['user_editcount'],
         )
 
 
@@ -236,7 +246,7 @@ class Page:
     page_title:str
     wiki_client:WikiClient
     page_namespace:Optional[Namespace] = None
-    qid_local:Optional[str] = None  # from page_props
+    qid_local:Optional[str] = None  # the value from page_props table
     log_events:list[LogEvent] = field(init=False, default_factory=list)
 
     def __post_init__(self) -> None:
@@ -258,7 +268,14 @@ class Page:
             self.wiki_client.get_namespaces()
         )
         
-        if self.wiki_client.dbname not in LARGE_WIKIS_LOGEVENTS.keys():  # TODO: figure out whether this can be done one way or the other for all projects
+        # TODO: figure out whether this can be done one way or the other for all projects
+        if self.wiki_client.dbname not in LARGE_WIKIS_LOGEVENTS.keys():
+            params = {
+                'logtype' : log.get('type', ''),
+                'logaction' : log.get('action', ''),
+                'logtitle' : plain_page_title.replace(' ', '_').replace('"', '""'),
+                'lognamespace' : page_namespace
+            }
             query = f"""SELECT
                 log_id,
                 log_timestamp,
@@ -268,12 +285,12 @@ class Page:
                 logging_userindex
                     JOIN actor_logging ON log_actor=actor_id
             WHERE
-                log_type="{log.get('type', '')}"
-                AND log_action="{log.get('action', '')}"
-                AND log_title="{plain_page_title.replace(' ', '_').replace('"', '""')}"
-                AND log_namespace={page_namespace}"""
+                log_type=%(logtype)s
+                AND log_action=%(logaction)s
+                AND log_title=%(logtitle)s
+                AND log_namespace=%(lognamespace)s"""
 
-            result = Replica.query_mediawiki(self.wiki_client.dbname, query)
+            result = Replica.query_mediawiki(self.wiki_client.dbname, query, params=params)
         else:
             api_response = WikiClient.api_request(
                 LARGE_WIKIS_LOGEVENTS.get(self.wiki_client.dbname, 'meta.wikimedia.org'),
@@ -294,6 +311,7 @@ class Page:
             if len(logids) == 0:
                 result = []
             else:
+                params_tuple = tuple(logids)
                 query = f"""SELECT
                     log_id,
                     log_timestamp,
@@ -303,9 +321,13 @@ class Page:
                     logging_userindex
                         JOIN actor_logging ON log_actor=actor_id
                 WHERE
-                    log_id IN ({', '.join([str(logid) for logid in logids])})"""
+                    log_id IN ({', '.join(['?' for _ in logids])})"""  # [str(logid) for logid in logids]
 
-                result = Replica.query_mediawiki(self.wiki_client.dbname, query)
+                result = Replica.query_mediawiki(
+                    self.wiki_client.dbname,
+                    query,
+                    params_tuple=params_tuple
+                )
 
         log_events:list[LogEvent] = []
 
@@ -313,19 +335,23 @@ class Page:
             return log_events
 
         for row in result:
-            log_id = row[0]
-            log_timestamp = row[1]
-            actor_name = row[2].decode('utf8')
+            log_id = row['log_id']
+            log_timestamp = row['log_timestamp']
+            actor_name = row['actor_name'].decode('utf8')
             
             try:
-                log_params = phpserialize.loads(row[3])
+                log_params = phpserialize.loads(row['log_params'])
             except ValueError as exception:  # old log_params format, to be ignored
-                if row[3] is None:
+                if row['log_params'] is None:
                     log_params = {}
                 else:
-                    log_params = { 'oldformat' : row[3].decode('utf8') }
+                    log_params = { 'oldformat' : row['log_params'].decode('utf8') }
             
-            log_timestamp_processed = int(log_timestamp.decode('utf8')) if isinstance(log_timestamp, bytes) or isinstance(log_timestamp, bytearray) else int(log_timestamp)
+            # comes back either way from some wikis; convert here if necessary
+            if isinstance(log_timestamp, bytes) or isinstance(log_timestamp, bytearray):
+                log_timestamp = log_timestamp.decode('utf8')
+
+            log_timestamp_processed = int(log_timestamp)
             log_events.append(
                 LogEvent(
                     log_id,

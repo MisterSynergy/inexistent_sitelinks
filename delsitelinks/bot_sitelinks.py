@@ -1,14 +1,15 @@
+import logging
 from typing import Any, Optional
-from time import sleep
 
 import pywikibot as pwb
-from pywikibot.exceptions import NoUsernameError, InvalidTitleError, TitleblacklistError, \
-    UnsupportedPageError, UnknownFamilyError, UnknownSiteError, CascadeLockedPageError, \
-    LockedPageError, NoPageError, APIError, OtherPageSaveError, SiteDefinitionError, \
-    NoWikibaseEntityError
+from pywikibot.exceptions import NoUsernameError, InvalidTitleError, UnsupportedPageError, \
+    UnknownFamilyError, UnknownSiteError, APIError, OtherPageSaveError, SiteDefinitionError
 
-from .config import REPO, TOUCH_SLEEP, EDITSUMMARY_HASHTAG
+from .config import REPO, EDITSUMMARY_HASHTAG
 from .database import LoggingDB
+
+
+LOG = logging.getLogger(__name__)
 
 
 def check_if_item_has_sitelink(qid:str, dbname:str, page_title:str) -> bool:
@@ -46,7 +47,7 @@ def check_if_page_exists_on_client(dbname:str, page_title:str) -> bool:
     try:
         return project_page.exists()
     except (InvalidTitleError, UnsupportedPageError, SiteDefinitionError) as exception:
-        print(f'{dbname}:{page_title} is skipped due to {exception}')
+        LOG.warn(f'{dbname}:{page_title} is skipped due to {exception}')
 
     return False
 
@@ -61,7 +62,7 @@ def check_if_page_is_redirect(dbname:str, page_title:str) -> bool:
     try:
         return project_page.isRedirectPage()
     except (InvalidTitleError, UnsupportedPageError) as exception:
-        print(f'{dbname}:{page_title} is skipped due to {exception}')
+        LOG.warn(f'{dbname}:{page_title} is skipped due to {exception}')
 
     return False
 
@@ -151,13 +152,13 @@ def normalize_title(qid:str, dbname:str, page_title:str, callback_payload:dict[s
     try:
         site = pwb.Site(lang, family)
     except (UnknownFamilyError, UnknownSiteError) as exception:
-        print(exception, lang, family)
+        LOG.warn(exception, lang, family)
         raise RuntimeWarning from exception
     
     try:
         page = pwb.Page(site, page_title)
     except NoUsernameError as exception:
-        print(exception, lang, family)
+        LOG.warn(exception, lang, family)
         raise RuntimeWarning from exception
     
     q_item = pwb.ItemPage(REPO, qid)
@@ -177,27 +178,3 @@ def normalize_title(qid:str, dbname:str, page_title:str, callback_payload:dict[s
         )
     except (APIError, OtherPageSaveError) as exception:
         pass
-
-
-def touch_page(dbname:str, page_title:str) -> None:
-    family, lang = str(pwb.site.APISite.fromDBName(dbname)).split(':')
-    try:
-        site = pwb.Site(lang, family)
-    except (UnknownFamilyError, UnknownSiteError) as exception:
-        print(exception, lang, family)
-        raise RuntimeWarning from exception
-
-    try:
-        page = pwb.Page(site, page_title)
-    except NoUsernameError as exception:
-        print(exception, lang, family)
-        raise RuntimeWarning from exception
-
-    try:
-        page.touch(quiet=True)
-    except (APIError, NoPageError, CascadeLockedPageError, LockedPageError, OtherPageSaveError, TitleblacklistError) as exception:
-        print(exception, lang, family)
-        raise RuntimeWarning from exception
-    else:
-        if TOUCH_SLEEP is not None:
-            sleep(TOUCH_SLEEP)
