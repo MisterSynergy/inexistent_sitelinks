@@ -3,7 +3,8 @@ from typing import Any, Optional
 
 import pywikibot as pwb
 from pywikibot.exceptions import NoUsernameError, InvalidTitleError, UnsupportedPageError, \
-    UnknownFamilyError, UnknownSiteError, APIError, OtherPageSaveError, SiteDefinitionError
+    UnknownFamilyError, UnknownSiteError, APIError, OtherPageSaveError, SiteDefinitionError, \
+    NoPageError
 
 from .config import REPO, EDITSUMMARY_HASHTAG
 from .database import LoggingDB
@@ -20,7 +21,10 @@ def check_if_item_has_sitelink(qid:str, dbname:str, page_title:str) -> bool:
     if q_item.isRedirectPage():
         return False
 
-    q_item.get()
+    try:
+        q_item.get()
+    except NoPageError:
+        return False
 
     if not q_item.sitelinks:
         return False
@@ -122,7 +126,10 @@ def canonicalize_sitelink(qid:str, dbname:str, callback_payload:dict[str, Any]) 
     edit_summary = f'normalize sitelink for {dbname} by using the canonical namespace prefix #{dbname}{EDITSUMMARY_HASHTAG}'
 
     q_item = pwb.ItemPage(REPO, qid)
-    q_item.get()
+    try:
+        q_item.get()
+    except NoPageError:
+        return
 
     connected_sitelink = q_item.sitelinks.get(dbname)
     if connected_sitelink is None:
