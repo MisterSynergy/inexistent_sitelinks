@@ -4,7 +4,7 @@ from typing import Any, Optional
 import pywikibot as pwb
 from pywikibot.exceptions import NoUsernameError, InvalidTitleError, UnsupportedPageError, \
     UnknownFamilyError, UnknownSiteError, APIError, OtherPageSaveError, SiteDefinitionError, \
-    NoPageError
+    NoPageError, InconsistentTitleError
 
 from .config import REPO, EDITSUMMARY_HASHTAG
 from .database import LoggingDB
@@ -17,7 +17,7 @@ def check_if_item_has_sitelink(qid:str, dbname:str, page_title:str) -> bool:
     q_item = pwb.ItemPage(REPO, qid)
     if not q_item.exists():
         return False
-    
+
     if q_item.isRedirectPage():
         return False
 
@@ -50,7 +50,7 @@ def check_if_page_exists_on_client(dbname:str, page_title:str) -> bool:
 
     try:
         return project_page.exists()
-    except (InvalidTitleError, UnsupportedPageError, SiteDefinitionError) as exception:
+    except (InvalidTitleError, UnsupportedPageError, SiteDefinitionError, InconsistentTitleError) as exception:
         LOG.warn(f'{dbname}:{page_title} is skipped due to {exception}')
 
     return False
@@ -80,7 +80,7 @@ def _make_edit_log(page:pwb.page.BasePage, err:Optional[Exception]=None) -> None
 
 def _make_edit_summary(dbname:str, page_title:str, edit_summary_log:Optional[str]=None) -> str:
     if edit_summary_log is None:
-        edit_summary_log = ''    
+        edit_summary_log = ''
 
     return f'remove sitelink "{dbname}:{page_title}" (page does not exist on client wiki{edit_summary_log}) #{dbname}{EDITSUMMARY_HASHTAG}'
 
@@ -99,7 +99,7 @@ def remove_sitelink_from_item(qid:str, dbname:str, page_title:str, callback_payl
 
 def handle_uncanonicalizable_sitelink(qid:str, dbname:str, callback_payload:dict[str, Any], sitelink:pwb.page.BaseLink) -> bool:
     client_page = pwb.Page(sitelink)
-    
+
     if not client_page.exists():
         callback_payload['eval_str'] += f'\nuncanonicalizable sitelink: found {sitelink.canonical_title()} for {dbname} in {qid} (inexistent)'
         callback_payload['eval_params']['likely_reason'] = '5A-1'
@@ -118,7 +118,7 @@ def handle_uncanonicalizable_sitelink(qid:str, dbname:str, callback_payload:dict
         callback_payload['eval_params']['likely_reason'] = '5A-3'
         remove_sitelink_from_item(qid, dbname, sitelink.canonical_title(), callback_payload)
         return True
-    
+
     return False
 
 
@@ -161,13 +161,13 @@ def normalize_title(qid:str, dbname:str, page_title:str, callback_payload:dict[s
     except (UnknownFamilyError, UnknownSiteError) as exception:
         LOG.warn(exception, lang, family)
         raise RuntimeWarning from exception
-    
+
     try:
         page = pwb.Page(site, page_title)
     except NoUsernameError as exception:
         LOG.warn(exception, lang, family)
         raise RuntimeWarning from exception
-    
+
     q_item = pwb.ItemPage(REPO, qid)
     q_item.callback_payload = callback_payload  # payload for logging purposes
 
