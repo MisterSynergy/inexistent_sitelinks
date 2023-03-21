@@ -15,7 +15,12 @@ LOG = logging.getLogger(__name__)
 
 def check_if_item_has_sitelink(qid:str, dbname:str, page_title:str) -> bool:
     q_item = pwb.ItemPage(REPO, qid)
-    if not q_item.exists():
+    try:
+        if not q_item.exists():
+            return False
+    except KeyError as exception:
+        LOG.error(exception)
+        LOG.error(f'{qid}, {dbname}, {page_title}')
         return False
 
     if q_item.isRedirectPage():
