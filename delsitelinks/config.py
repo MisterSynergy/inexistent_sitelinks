@@ -22,8 +22,6 @@ LARGE_WIKIS_LOGEVENTS:dict[str, str] = {  # TODO: list instead of dict, and retr
 
 # Q-IDs to ignore at most places; these should likely only be items for Special pages which are rather unusual
 QIDS_TO_IGNORE:list[str] = [
-    'Q105429923',  # Special:RecentChanges
-    'Q112333026',  # Special:ProtectedTitles
 ]
 
 # wiki dbnames of projects with persistent problems; might require server admin attention as in
