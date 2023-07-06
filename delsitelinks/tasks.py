@@ -8,7 +8,7 @@ from .query_replicas import query_pages, query_sitelinks
 from .query_tooldb import query_missing_page_df, query_local_qid_is_different_df, query_local_qid_is_missing_df
 from .processing_sitelinks import remove_sitelinks
 from .processing_touch import touch_different_local_qids, touch_missing_local_qids
-
+from .special_pages_report import clear_special_page_log, write_special_page_report
 
 LOG = logging.getLogger(__name__)
 
@@ -74,6 +74,8 @@ def query_wiki_clients(lazy_namespaces:bool=False) -> list[WikiClient]:
 def main_tidy_sitelinks() -> None:
     wiki_clients = query_wiki_clients(lazy_namespaces=True)
 
+    clear_special_page_log()
+
     for i, wiki_client in enumerate(wiki_clients, start=1):
         if wiki_client.dbname in NEEDS_FIX_WIKIS:
             continue
@@ -92,6 +94,8 @@ def main_tidy_sitelinks() -> None:
 
         LOG.info(f'{wiki_client.dbname} ({i}/{len(wiki_clients)})')
         process_project(wiki_client, job_remove_sitelinks=True, job_qid_different=False, job_qid_missing=False)
+
+    write_special_page_report()
 
 
 # Remarks related to page touch:

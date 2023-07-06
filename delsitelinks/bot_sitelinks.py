@@ -55,7 +55,10 @@ def check_if_page_exists_on_client(dbname:str, page_title:str) -> bool:
 
     try:
         return project_page.exists()
-    except (InvalidTitleError, UnsupportedPageError, SiteDefinitionError, InconsistentTitleError) as exception:
+    except UnsupportedPageError as exception:
+        LOG.warn(f'{dbname}:{page_title} is skipped due to {exception}')
+        raise RuntimeWarning('') from exception
+    except (InvalidTitleError, SiteDefinitionError, InconsistentTitleError) as exception:
         LOG.warn(f'{dbname}:{page_title} is skipped due to {exception}')
 
     return False

@@ -9,6 +9,7 @@ from .config import QIDS_TO_IGNORE
 from .types import WikiClient, Page, Sitelink, LogEvent
 from .bot_sitelinks import remove_sitelink_from_item, canonicalize_sitelink, normalize_title, \
     check_if_item_has_sitelink, check_if_page_exists_on_client, check_if_page_is_redirect
+from .special_pages_report import log_special_page_sitelink
 
 
 LOG = logging.getLogger(__name__)
@@ -51,9 +52,6 @@ def remove_sitelinks(df:pd.DataFrame, wiki_client:WikiClient) -> None:
 
 
 def process_sitelink(sitelink:Sitelink) -> None:  # TODO: tidy
-    if sitelink.qid in QIDS_TO_IGNORE:
-        return
-
     try:
         item_has_sitelink = check_if_item_has_sitelink(sitelink.qid, sitelink.wiki_client.dbname, sitelink.page.page_title)
     except RuntimeWarning:
@@ -68,8 +66,13 @@ def process_sitelink(sitelink:Sitelink) -> None:  # TODO: tidy
 
     try:
         page_exists = check_if_page_exists_on_client(sitelink.wiki_client.dbname, sitelink.page.page_title)
-    except ValueError:
+    except RuntimeWarning:
+        log_special_page_sitelink(sitelink.qid, sitelink.wiki_client.dbname, sitelink.page.page_title)
+        page_exists = False
+
+    if sitelink.qid in QIDS_TO_IGNORE:
         return
+
     if page_exists:
         process_sitelink_title_normalization(sitelink)
         return

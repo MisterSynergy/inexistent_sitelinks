@@ -2,3 +2,5 @@ meta/
 
 logging.db
 tooldb.my.cnf
+special_page_log.tsv
+delsitelinks.log

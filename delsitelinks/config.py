@@ -10,6 +10,7 @@ TOUCH_SLEEP:int = 2  # int or None; time in seconds
 # logging
 DB_PATH:str = './logging.db'  # an sqlite3 database to log actions performed on the wiki
 TOOLDB_NAME_FILE:str = './tooldb.my.cnf'  # sitting in the main directory of the tool
+SPECIAL_PAGE_LOG:str = './special_page_log.tsv'  # sitting in the main directory of the tool
 
 # querying
 QUERY_CHUNK_SIZE:int = 500000  # chunksize when querying from replicas; done in order to reduce memory demands
