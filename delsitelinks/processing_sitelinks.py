@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from .config import QIDS_TO_IGNORE
+from .config import QIDS_TO_IGNORE, MAX_SITELINKS_PER_PROJECT
 from .types import WikiClient, Page, Sitelink, LogEvent
 from .bot_sitelinks import remove_sitelink_from_item, canonicalize_sitelink, normalize_title, \
     check_if_item_has_sitelink, check_if_page_exists_on_client, check_if_page_is_redirect
@@ -34,6 +34,10 @@ def _make_callback_payload(qid:str, dbname:str, page_title:str, log_event:Option
 
 def remove_sitelinks(df:pd.DataFrame, wiki_client:WikiClient) -> None:
     LOG.info(f'Cases of sitelinks to inexistent pages in {wiki_client.dbname}: {df.shape[0]}')
+
+    if df.shape[0] > MAX_SITELINKS_PER_PROJECT:
+        df = df.sample(MAX_SITELINKS_PER_PROJECT)
+    
     for elem in df.itertuples():
         page = Page(
             elem.sitelink,

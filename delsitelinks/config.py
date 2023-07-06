@@ -21,6 +21,9 @@ LARGE_WIKIS_LOGEVENTS:dict[str, str] = {  # TODO: list instead of dict, and retr
     'srwikinews' : 'sr.wikinews.org',
 }
 
+# max number of sitelinks removed per project
+MAX_SITELINKS_PER_PROJECT = 1000
+
 # Q-IDs to ignore at most places; these should likely only be items for Special pages which are rather unusual
 QIDS_TO_IGNORE:list[str] = [
 ]
