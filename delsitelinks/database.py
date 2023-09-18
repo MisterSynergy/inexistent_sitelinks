@@ -57,10 +57,7 @@ class Replica:
     def query_mediawiki_chunked(cls:Type[R], dbname:str, query:str, params:Optional[dict[str, Any]]=None, chunksize:int=QUERY_CHUNK_SIZE) -> Generator[list[dict[str, Any]], None, None]:
         with cls(dbname) as db_cursor:
             try:
-                if params is None:
-                    db_cursor.execute(query)
-                else:
-                    db_cursor.execute(query, params)
+                db_cursor.execute(query, params)
             except mariadb.ProgrammingError as exception:
                 msg = f'Failed to query "{query}" with params "{params}" at {dbname}'
                 LOG.warn(msg)
