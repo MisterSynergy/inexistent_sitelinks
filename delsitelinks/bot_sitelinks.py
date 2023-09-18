@@ -13,6 +13,16 @@ from .database import LoggingDB
 LOG = logging.getLogger(__name__)
 
 
+def get_site_object(dbname:str) -> pwb.site._basesite.BaseSite:
+    try:
+        site = pwb.site.APISite.fromDBName(dbname)
+    except (UnknownFamilyError, UnknownSiteError) as exception:
+        LOG.warn(exception, dbname)
+        raise RuntimeWarning from exception
+
+    return site
+
+
 def check_if_item_has_sitelink(qid:str, dbname:str, page_title:str) -> bool:
     q_item = pwb.ItemPage(REPO, qid)
     try:
@@ -46,10 +56,10 @@ def check_if_item_has_sitelink(qid:str, dbname:str, page_title:str) -> bool:
 
 
 def check_if_page_exists_on_client(dbname:str, page_title:str) -> bool:
-    family, lang = str(pwb.site.APISite.fromDBName(dbname)).split(':')
+    site = get_site_object(dbname)
 
     project_page = pwb.Page(
-        pwb.Site(code=lang, fam=family),
+        site,
         page_title
     )
 
@@ -65,9 +75,10 @@ def check_if_page_exists_on_client(dbname:str, page_title:str) -> bool:
 
 
 def check_if_page_is_redirect(dbname:str, page_title:str) -> bool:
-    family, lang = str(pwb.site.APISite.fromDBName(dbname)).split(':')
+    site = get_site_object(dbname)
+
     project_page = pwb.Page(
-        pwb.Site(code=lang, fam=family),
+        site,
         page_title
     )
 
@@ -163,17 +174,12 @@ def canonicalize_sitelink(qid:str, dbname:str, callback_payload:dict[str, Any]) 
 
 
 def normalize_title(qid:str, dbname:str, page_title:str, callback_payload:dict[str, Any]) -> None:
-    family, lang = str(pwb.site.APISite.fromDBName(dbname)).split(':')
-    try:
-        site = pwb.Site(lang, family)
-    except (UnknownFamilyError, UnknownSiteError) as exception:
-        LOG.warn(exception, lang, family)
-        raise RuntimeWarning from exception
+    site = get_site_object(dbname)
 
     try:
         page = pwb.Page(site, page_title)
     except NoUsernameError as exception:
-        LOG.warn(exception, lang, family)
+        LOG.warn(exception, dbname)
         raise RuntimeWarning from exception
 
     q_item = pwb.ItemPage(REPO, qid)
